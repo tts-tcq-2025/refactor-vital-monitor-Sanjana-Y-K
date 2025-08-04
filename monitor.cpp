@@ -28,17 +28,22 @@ void blinkWarningMessage(const char* message) {
 }
 
 int vitalsOk(float temperature, float pulseRate, float spo2) {
-  if (isTemperatureCritical(temperature)) {
-    blinkWarningMessage("Temperature is critical!");
-    return 0;
-  }
-  if (isPulseRateOutOfRange(pulseRate)) {
-    blinkWarningMessage("Pulse Rate is out of range!");
-    return 0;
-  }
-  if (isSpo2Low(spo2)) {
-    blinkWarningMessage("Oxygen Saturation out of range!");
-    return 0;
+  // Array of check functions and messages
+  struct Check {
+    bool (*func)(float);
+    float value;
+    const char* message;
+  } checks[] = {
+    { isTemperatureCritical, temperature, "Temperature is critical!" },
+    { isPulseRateOutOfRange, pulseRate, "Pulse Rate is out of range!" },
+    { isSpo2Low, spo2, "Oxygen Saturation out of range!" }
+  };
+
+  for (const auto& check : checks) {
+    if (check.func(check.value)) {
+      blinkWarningMessage(check.message);
+      return 0;
+    }
   }
   return 1;
 }
