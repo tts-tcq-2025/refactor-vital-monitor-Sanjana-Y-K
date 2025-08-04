@@ -2,6 +2,8 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <algorithm>  // for std::find_if
+
 using std::cout, std::flush, std::this_thread::sleep_for, std::chrono::seconds;
 
 bool isTemperatureCritical(float temperature) {
@@ -28,22 +30,27 @@ void blinkWarningMessage(const char* message) {
 }
 
 int vitalsOk(float temperature, float pulseRate, float spo2) {
-  // Array of check functions and messages
   struct Check {
     bool (*func)(float);
     float value;
     const char* message;
-  } checks[] = {
+  };
+
+  const Check checks[] = {
     { isTemperatureCritical, temperature, "Temperature is critical!" },
     { isPulseRateOutOfRange, pulseRate, "Pulse Rate is out of range!" },
     { isSpo2Low, spo2, "Oxygen Saturation out of range!" }
   };
 
-  for (const auto& check : checks) {
-    if (check.func(check.value)) {
-      blinkWarningMessage(check.message);
-      return 0;
-    }
+  // Use std::find_if instead of raw loop
+  auto it = std::find_if(std::begin(checks), std::end(checks),
+                         [](const Check& check) {
+                           return check.func(check.value);
+                         });
+
+  if (it != std::end(checks)) {
+    blinkWarningMessage(it->message);
+    return 0;
   }
   return 1;
 }
