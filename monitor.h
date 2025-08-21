@@ -3,18 +3,29 @@
 
 #include <string>
 
-bool isTemperatureCritical(float temperature);
-bool isPulseRateOutOfRange(float pulseRate);
-bool isSpo2Low(float spo2);
+enum class VitalStatus {
+  Normal,
+  WarningLow,
+  WarningHigh,
+  CriticalLow,
+  CriticalHigh
+};
 
-std::string temperatureWarning(float temperature);
-std::string pulseWarning(float pulseRate);
-std::string spo2Warning(float spo2);
+struct VitalCheckResult {
+  VitalStatus status;
+  std::string message;
+};
 
-// Alarm blinking for critical warnings
-void blinkWarningMessage(const char* message);
+// Vital checks
+VitalCheckResult checkTemperature(float temperature);
+VitalCheckResult checkPulseRate(float pulseRate);
+VitalCheckResult checkSpo2(float spo2);
 
-// Returns 1 if all vitals OK, 0 if critical alarm triggered
-int vitalsOk(float temperature, float pulseRate, float spo2);
+// Shows warning or critical messages (non-blocking, no blinking)
+void printMessage(const std::string& message);
 
-#endif  
+// Main vitals check function
+// Returns true if all vitals normal or warning, false if any is critical
+bool vitalsOk(float temperature, float pulseRate, float spo2);
+
+#endif  // MONITOR_H_
