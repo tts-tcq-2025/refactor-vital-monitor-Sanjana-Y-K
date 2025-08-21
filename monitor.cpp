@@ -1,95 +1,116 @@
 #include "monitor.h"
 #include <iostream>
-#include <cmath>
 
 namespace {
-  constexpr float TEMP_LOW = 95.0f;
-  constexpr float TEMP_HIGH = 102.0f;
-  constexpr float PULSE_LOW = 60.0f;
-  constexpr float PULSE_HIGH = 100.0f;
-  constexpr float SPO2_LOW = 90.0f;
-  constexpr float SPO2_HIGH = 100.0f;
+constexpr float TEMP_LOW = 95.0f;
+constexpr float TEMP_HIGH = 102.0f;
+constexpr float PULSE_LOW = 60.0f;
+constexpr float PULSE_HIGH = 100.0f;
+constexpr float SPO2_LOW = 90.0f;
+constexpr float SPO2_HIGH = 100.0f;
+constexpr float TOL = 0.015f;  // 1.5%
 
-  constexpr float TOLERANCE_PERCENT = 0.015f;  // 1.5%
-
-  inline float tolerance(float upperLimit) {
-    return upperLimit * TOLERANCE_PERCENT;
-  }
-
-  VitalCheckResult evaluateVital(float value, float lowLimit, float highLimit,
-                                const std::string& name,
-                                const std::string& lowWarning,
-                                const std::string& highWarning,
-                                const std::string& lowCritical,
-                                const std::string& highCritical) {
-    if (value < lowLimit) {
-      if (value >= lowLimit - tolerance(lowLimit)) {
-        return {VitalStatus::WarningLow, "Warning: Approaching " + lowWarning};
-      }
-      return {VitalStatus::CriticalLow, lowCritical};
-    }
-    if (value > highLimit) {
-      if (value <= highLimit + tolerance(highLimit)) {
-        return {VitalStatus::WarningHigh, "Warning: Approaching " + highWarning};
-      }
-      return {VitalStatus::CriticalHigh, highCritical};
-    }
-    // Check for warnings near lower limit
-    if (value >= lowLimit && value <= lowLimit + tolerance(lowLimit)) {
-      return {VitalStatus::WarningLow, "Warning: Approaching " + lowWarning};
-    }
-    // Check for warnings near upper limit
-    if (value >= highLimit - tolerance(highLimit) && value <= highLimit) {
-      return {VitalStatus::WarningHigh, "Warning: Approaching " + highWarning};
-    }
-    return {VitalStatus::Normal, ""};
-  }
+float tolerance(float limit) {
+    return limit * TOL;
 }
 
+VitalCheckResult checkTemperatureDetailed(float temperature) {
+    if (temperature < TEMP_LOW) {
+        if (temperature < TEMP_LOW - tolerance(TEMP_LOW)) {
+            return {VitalStatus::CriticalLow, "Temperature critically low!"};
+        } else if (temperature >= TEMP_LOW - tolerance(TEMP_LOW)) {
+            return {VitalStatus::WarningLow, "Warning: Approaching hypothermia"};
+        } else {
+            return {VitalStatus::Normal, ""};  // added extra branch
+        }
+    } else if (temperature > TEMP_HIGH) {
+        if (temperature > TEMP_HIGH + tolerance(TEMP_HIGH)) {
+            return {VitalStatus::CriticalHigh, "Temperature critically high!"};
+        } else if (temperature <= TEMP_HIGH + tolerance(TEMP_HIGH)) {
+            return {VitalStatus::WarningHigh, "Warning: Approaching hyperthermia"};
+        } else {
+            return {VitalStatus::Normal, ""};
+        }
+    } else if (temperature >= TEMP_LOW && temperature <= TEMP_LOW + tolerance(TEMP_LOW)) {
+        return {VitalStatus::WarningLow, "Warning: Approaching hypothermia"};
+    } else if (temperature >= TEMP_HIGH - tolerance(TEMP_HIGH) && temperature <= TEMP_HIGH) {
+        return {VitalStatus::WarningHigh, "Warning: Approaching hyperthermia"};
+    }
+    return {VitalStatus::Normal, ""};
+}
+
+VitalCheckResult checkPulseRateDetailed(float pulse) {
+    if (pulse < PULSE_LOW) {
+        if (pulse < PULSE_LOW - tolerance(PULSE_LOW)) {
+            return {VitalStatus::CriticalLow, "Pulse rate critically low!"};
+        } else if (pulse >= PULSE_LOW - tolerance(PULSE_LOW)) {
+            return {VitalStatus::WarningLow, "Warning: Approaching low pulse rate"};
+        } else {
+            return {VitalStatus::Normal, ""};
+        }
+    } else if (pulse > PULSE_HIGH) {
+        if (pulse > PULSE_HIGH + tolerance(PULSE_HIGH)) {
+            return {VitalStatus::CriticalHigh, "Pulse rate critically high!"};
+        } else if (pulse <= PULSE_HIGH + tolerance(PULSE_HIGH)) {
+            return {VitalStatus::WarningHigh, "Warning: Approaching high pulse rate"};
+        } else {
+            return {VitalStatus::Normal, ""};
+        }
+    } else if (pulse >= PULSE_LOW && pulse <= PULSE_LOW + tolerance(PULSE_LOW)) {
+        return {VitalStatus::WarningLow, "Warning: Approaching low pulse rate"};
+    } else if (pulse >= PULSE_HIGH - tolerance(PULSE_HIGH) && pulse <= PULSE_HIGH) {
+        return {VitalStatus::WarningHigh, "Warning: Approaching high pulse rate"};
+    }
+    return {VitalStatus::Normal, ""};
+}
+
+VitalCheckResult checkSpo2Detailed(float spo2) {
+    if (spo2 < SPO2_LOW) {
+        if (spo2 < SPO2_LOW - tolerance(SPO2_LOW)) {
+            return {VitalStatus::CriticalLow, "Oxygen saturation critically low!"};
+        } else if (spo2 >= SPO2_LOW - tolerance(SPO2_LOW)) {
+            return {VitalStatus::WarningLow, "Warning: Approaching low SPO2 level"};
+        } else {
+            return {VitalStatus::Normal, ""};
+        }
+    } else if (spo2 >= SPO2_LOW && spo2 <= SPO2_LOW + tolerance(SPO2_LOW)) {
+        return {VitalStatus::WarningLow, "Warning: Approaching low SPO2 level"};
+    }
+    return {VitalStatus::Normal, ""};
+}
+}  // namespace
+
 VitalCheckResult checkTemperature(float temperature) {
-  return evaluateVital(temperature, TEMP_LOW, TEMP_HIGH,
-                       "Temperature",
-                       "hypothermia", "hyperthermia",
-                       "Temperature is critically low!",
-                       "Temperature is critically high!");
+    return checkTemperatureDetailed(temperature);
 }
 
 VitalCheckResult checkPulseRate(float pulseRate) {
-  return evaluateVital(pulseRate, PULSE_LOW, PULSE_HIGH,
-                       "Pulse rate",
-                       "low pulse rate", "high pulse rate",
-                       "Pulse rate is critically low!",
-                       "Pulse rate is critically high!");
+    return checkPulseRateDetailed(pulseRate);
 }
 
 VitalCheckResult checkSpo2(float spo2) {
-  return evaluateVital(spo2, SPO2_LOW, SPO2_HIGH,
-                       "Oxygen saturation",
-                       "low SPO2 level", "high SPO2 level",
-                       "Oxygen saturation critically low!",
-                       "Oxygen saturation critically high!");
+    return checkSpo2Detailed(spo2);
 }
 
 void printMessage(const std::string& message) {
-  if (!message.empty()) {
-    std::cout << message << std::endl;
-  }
+    if (!message.empty()) {
+        std::cout << message << std::endl;
+    }
 }
 
-bool vitalsOk(float temperature, float pulseRate, float spo2) {
-  VitalCheckResult results[] = {
-    checkTemperature(temperature),
-    checkPulseRate(pulseRate),
-    checkSpo2(spo2)
-  };
+bool vitalsOk(float temp, float pulse, float spo2) {
+    VitalCheckResult results[] = {
+        checkTemperature(temp),
+        checkPulseRate(pulse),
+        checkSpo2(spo2)
+    };
 
-  bool criticalFound = false;
-  for (const auto& result : results) {
-    printMessage(result.message);
-    if (result.status == VitalStatus::CriticalLow ||
-        result.status == VitalStatus::CriticalHigh) {
-      criticalFound = true;
+    bool criticalFound = false;
+    for (const auto& res : results) {
+        printMessage(res.message);
+        if (res.status == VitalStatus::CriticalLow || res.status == VitalStatus::CriticalHigh) {
+            criticalFound = true;
+        }
     }
-  }
-  return !criticalFound;
+    return !criticalFound;
 }
