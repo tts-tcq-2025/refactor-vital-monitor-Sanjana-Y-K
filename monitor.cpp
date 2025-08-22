@@ -1,6 +1,6 @@
 #include "monitor.h"
 #include <iostream>
-#include <string>  // include string for std::string usage
+#include <string>
 
 namespace {
 constexpr float TEMP_LOW = 95.0f;
@@ -14,74 +14,64 @@ float tolerance(float limit) {
     return limit * TOL;
 }
 
-// Helper to check a value against low/high thresholds with tolerance
-VitalCheckResult checkVital(float value, float low, float high,
-                           const char* lowCriticalMsg, const char* lowWarnMsg,
-                           const char* highCriticalMsg, const char* highWarnMsg) {
-    float lowTol = low - tolerance(low);
-    float highTol = high + tolerance(high);
+enum class VitalLimitType {
+    TwoSided,  // low and high limits
+    LowOnly    // only low limit
+};
 
-    if (value < lowTol) {
-        VitalCheckResult res;
-        res.status = VitalStatus::CriticalLow;
-        res.message = std::string(lowCriticalMsg);
-        return res;
+// Generalized vital check with tolerance and messages
+VitalCheckResult checkVital(float value, float low, float high,
+                           VitalLimitType limitType,
+                           const std::string& lowCriticalMsg,
+                           const std::string& lowWarnMsg,
+                           const std::string& highCriticalMsg = "",
+                           const std::string& highWarnMsg = "") {
+    float lowTol = low - tolerance(low);
+
+    if (limitType == VitalLimitType::TwoSided) {
+        float highTol = high + tolerance(high);
+        if (value < lowTol) {
+            return VitalCheckResult{VitalStatus::CriticalLow, lowCriticalMsg};
+        }
+        if (value < low) {
+            return VitalCheckResult{VitalStatus::WarningLow, lowWarnMsg};
+        }
+        if (value > highTol) {
+            return VitalCheckResult{VitalStatus::CriticalHigh, highCriticalMsg};
+        }
+        if (value > high) {
+            return VitalCheckResult{VitalStatus::WarningHigh, highWarnMsg};
+        }
+        return VitalCheckResult{VitalStatus::Normal, ""};
     }
-    if (value < low) {
-        VitalCheckResult res;
-        res.status = VitalStatus::WarningLow;
-        res.message = std::string(lowWarnMsg);
-        return res;
+    else {  // LowOnly limits
+        if (value < lowTol) {
+            return VitalCheckResult{VitalStatus::CriticalLow, lowCriticalMsg};
+        }
+        if (value < low) {
+            return VitalCheckResult{VitalStatus::WarningLow, lowWarnMsg};
+        }
+        return VitalCheckResult{VitalStatus::Normal, ""};
     }
-    if (value > highTol) {
-        VitalCheckResult res;
-        res.status = VitalStatus::CriticalHigh;
-        res.message = std::string(highCriticalMsg);
-        return res;
-    }
-    if (value > high) {
-        VitalCheckResult res;
-        res.status = VitalStatus::WarningHigh;
-        res.message = std::string(highWarnMsg);
-        return res;
-    }
-    VitalCheckResult res;
-    res.status = VitalStatus::Normal;
-    res.message = "";
-    return res;
 }
 
 VitalCheckResult checkTemperatureDetailed(float temperature) {
-    return checkVital(temperature, TEMP_LOW, TEMP_HIGH,
+    return checkVital(temperature, TEMP_LOW, TEMP_HIGH, VitalLimitType::TwoSided,
                       "Temperature critically low!", "Warning: Approaching hypothermia",
                       "Temperature critically high!", "Warning: Approaching hyperthermia");
 }
 
 VitalCheckResult checkPulseRateDetailed(float pulse) {
-    return checkVital(pulse, PULSE_LOW, PULSE_HIGH,
+    return checkVital(pulse, PULSE_LOW, PULSE_HIGH, VitalLimitType::TwoSided,
                       "Pulse rate critically low!", "Warning: Approaching low pulse rate",
                       "Pulse rate critically high!", "Warning: Approaching high pulse rate");
 }
 
 VitalCheckResult checkSpo2Detailed(float spo2) {
-    float lowTol = SPO2_LOW - tolerance(SPO2_LOW);
-    if (spo2 < lowTol) {
-        VitalCheckResult res;
-        res.status = VitalStatus::CriticalLow;
-        res.message = "Oxygen saturation critically low!";
-        return res;
-    }
-    if (spo2 < SPO2_LOW) {
-        VitalCheckResult res;
-        res.status = VitalStatus::WarningLow;
-        res.message = "Warning: Approaching low SPO2 level";
-        return res;
-    }
-    VitalCheckResult res;
-    res.status = VitalStatus::Normal;
-    res.message = "";
-    return res;
+    return checkVital(spo2, SPO2_LOW, 0.0f, VitalLimitType::LowOnly,
+                      "Oxygen saturation critically low!", "Warning: Approaching low SPO2 level");
 }
+
 }  // namespace
 
 VitalCheckResult checkTemperature(float temperature) {
