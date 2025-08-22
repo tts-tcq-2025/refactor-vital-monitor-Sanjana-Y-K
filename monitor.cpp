@@ -13,6 +13,7 @@ float tolerance(float limit) {
     return limit * TOL;
 }
 
+// CCN = 3: 4 sequential ifs, no nesting
 VitalCheckResult checkTemperatureDetailed(float temperature) {
     if (temperature < TEMP_LOW - tolerance(TEMP_LOW)) {
         return {VitalStatus::CriticalLow, "Temperature critically low!"};
@@ -29,6 +30,7 @@ VitalCheckResult checkTemperatureDetailed(float temperature) {
     return {VitalStatus::Normal, ""};
 }
 
+// CCN = 3: similar structure
 VitalCheckResult checkPulseRateDetailed(float pulse) {
     if (pulse < PULSE_LOW - tolerance(PULSE_LOW)) {
         return {VitalStatus::CriticalLow, "Pulse rate critically low!"};
@@ -45,6 +47,7 @@ VitalCheckResult checkPulseRateDetailed(float pulse) {
     return {VitalStatus::Normal, ""};
 }
 
+// CCN = 2: fewer branches
 VitalCheckResult checkSpo2Detailed(float spo2) {
     if (spo2 < SPO2_LOW - tolerance(SPO2_LOW)) {
         return {VitalStatus::CriticalLow, "Oxygen saturation critically low!"};
