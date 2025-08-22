@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "monitor.h"
+#include "./monitor.h"
 
 TEST(MonitorValidation, TemperatureChecks) {
   EXPECT_TRUE(isTemperatureCritical(103));
@@ -27,4 +27,5 @@ TEST(MonitorVitalsOk, ReturnsFalseIfAnyVitalIsOffRange) {
 TEST(MonitorVitalsOk, ReturnsTrueIfAllVitalsNormal) {
   EXPECT_TRUE(vitalsOk(98.6, 70, 97));
 }
+
 
