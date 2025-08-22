@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "monitor.h"
+#include "./monitor.h"
 
 TEST(MonitorCheck, Temperature) {
   EXPECT_EQ(checkTemperature(103).status, VitalStatus::CriticalHigh);
@@ -34,3 +34,4 @@ TEST(MonitorVitalsOk, ReturnsTrueWhenNormalOrWarning) {
   EXPECT_TRUE(vitalsOk(102, 85, 90.5));  // Temp warning high, SPO2 warning low
   EXPECT_TRUE(vitalsOk(98.6, 75, 97));   // normal
 }
+
