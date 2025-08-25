@@ -1,6 +1,6 @@
 #include <cassert>
 #include <iostream>
-#include "monitor.h"
+#include "./monitor.h"
 
 using std::cout;
 
@@ -58,3 +58,4 @@ int main() {
     cout << "\nAll tests completed successfully.\n";
     return 0;
 }
+
