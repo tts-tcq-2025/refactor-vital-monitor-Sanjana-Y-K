@@ -1,3 +1,4 @@
+#include <gtest/gtest.h>
 #include "./monitor.h"
 #include <iostream>
 #include <cassert>
@@ -20,4 +21,5 @@ int main() {
     std::cout << "All assert-based tests passed successfully.\n";
     return 0;
 }
+
 
