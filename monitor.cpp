@@ -1,85 +1,78 @@
-#include "monitor.h"
-#include <iostream>
-#include <string>
+#include "./monitor.h"
+#include <assert.h>
 #include <thread>
 #include <chrono>
+#include <iostream>
 
-namespace {
-constexpr float TEMP_LOW = 95.0f;
-constexpr float TEMP_HIGH = 102.0f;
-constexpr float PULSE_LOW = 60.0f;
-constexpr float PULSE_HIGH = 100.0f;
-constexpr float SPO2_LOW = 90.0f;
-constexpr float TOL = 0.015f;  // 1.5%
+using std::cout, std::flush, std::this_thread::sleep_for, std::chrono::milliseconds;
 
-enum class VitalStatus { Normal, Warning, Critical };
+constexpr float TEMP_MIN = 95.0f;
+constexpr float TEMP_MAX = 102.0f;
+constexpr float PULSE_MIN = 60.0f;
+constexpr float PULSE_MAX = 100.0f;
+constexpr float SPO2_THRESHOLD = 90.0f;
 
-// Simple struct for results
-struct VitalCheckResult {
-    VitalStatus status;
-    std::string message;
-};
+constexpr int OK = 1;
+constexpr int NOT_OK = 0;
 
-// Blink alert for critical conditions
+constexpr float TEMP_TOLERANCE = 1.5f;  // Fixed 1.5 degrees instead of percentage
+
 void blinkAlert() {
     for (int i = 0; i < 6; ++i) {
-        std::cout << "\r* " << std::flush;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        std::cout << "\r *" << std::flush;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        cout << "\r**" << flush;
+        sleep_for(milliseconds(800));
+        cout << "\r  " << flush;
+        sleep_for(milliseconds(800));
     }
-    std::cout << "\r  \r" << std::flush;
+    cout << "\r  \r" << flush;
 }
 
-// Check a vital with low/high limits (high can be 0 for low-only)
-VitalCheckResult checkVital(float val, float low, float high,
-                           const std::string& critLowMsg,
-                           const std::string& warnLowMsg,
-                           const std::string& critHighMsg = "",
-                           const std::string& warnHighMsg = "") {
-    float lowTol = low - low * TOL;
-    if (val < lowTol) return {VitalStatus::Critical, critLowMsg};
-    if (val < low) return {VitalStatus::Warning, warnLowMsg};
-    if (high > 0) {
-        float highTol = high + high * TOL;
-        if (val > highTol) return {VitalStatus::Critical, critHighMsg};
-        if (val > high) return {VitalStatus::Warning, warnHighMsg};
+void checkHypothermiaWarning(float temp) {
+    if (temp >= TEMP_MIN && temp <= TEMP_MIN + TEMP_TOLERANCE) {
+        cout << "Caution: Temperature approaching hypothermia range\n";
     }
-    return {VitalStatus::Normal, ""};
 }
 
-}  // namespace
-
-// Specific vital checks
-VitalCheckResult checkTemperature(float t) {
-    return checkVital(t, TEMP_LOW, TEMP_HIGH,
-                      "Temperature critically low!", "Warning: Approaching hypothermia",
-                      "Temperature critically high!", "Warning: Approaching hyperthermia");
-}
-VitalCheckResult checkPulseRate(float p) {
-    return checkVital(p, PULSE_LOW, PULSE_HIGH,
-                      "Pulse rate critically low!", "Warning: Approaching low pulse rate",
-                      "Pulse rate critically high!", "Warning: Approaching high pulse rate");
-}
-VitalCheckResult checkSpo2(float s) {
-    return checkVital(s, SPO2_LOW, 0.0f,
-                      "Oxygen saturation critically low!", "Warning: Approaching low SPO2 level");
-}
-
-// Print message if non-empty
-void printMessage(const std::string& msg) {
-    if (!msg.empty()) std::cout << msg << std::endl;
-}
-
-// Check all vitals, blink on critical, print warnings
-bool vitalsOk(float temp, float pulse, float spo2) {
-    auto results = {checkTemperature(temp), checkPulseRate(pulse), checkSpo2(spo2)};
-    bool critical = false;
-
-    for (const auto& r : results) {
-        printMessage(r.message);
-        if (r.status == VitalStatus::Critical) critical = true;
+void checkHyperthermiaWarning(float temp) {
+    if (temp >= TEMP_MAX - TEMP_TOLERANCE && temp <= TEMP_MAX) {
+        cout << "Caution: Temperature approaching hyperthermia range\n";
     }
-    if (critical) blinkAlert();
-    return !critical;
+}
+
+int isTemperatureOk(float temp) {
+    if (temp < TEMP_MIN || temp > TEMP_MAX) {
+        cout << "Alert: Critical temperature detected!\n";
+        blinkAlert();
+        return NOT_OK;
+    }
+    checkHypothermiaWarning(temp);
+    checkHyperthermiaWarning(temp);
+    cout << "Temperature within normal range.\n";
+    return OK;
+}
+
+int isPulseRateOk(float pulse) {
+    if (pulse < PULSE_MIN || pulse > PULSE_MAX) {
+        cout << "Alert: Abnormal pulse rate detected!\n";
+        blinkAlert();
+        return NOT_OK;
+    }
+    cout << "Pulse rate within normal range.\n";
+    return OK;
+}
+
+int isSpO2Ok(float spo2) {
+    if (spo2 < SPO2_THRESHOLD) {
+        cout << "Alert: Oxygen saturation too low!\n";
+        blinkAlert();
+        return NOT_OK;
+    }
+    cout << "SpO2 within acceptable range.\n";
+    return OK;
+}
+
+int vitalsOk(float temperature, float pulseRate, float spo2) {
+    return isTemperatureOk(temperature) &&
+           isPulseRateOk(pulseRate) &&
+           isSpO2Ok(spo2);
 }
